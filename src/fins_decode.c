@@ -33,6 +33,7 @@
  */
 
 #include <ctype.h>
+#include <string.h>
 #include "fins.h"
 
 /*
@@ -56,6 +57,7 @@ bool XX_finslib_decode_address( const char *str, struct fins_address_tp *address
 	uint32_t sub_address;
 	char name[4];
 	const char *ptr;
+	bool name_resolved;
 
 	if ( str == NULL  ||  address == NULL ) return true;
 
@@ -63,21 +65,34 @@ bool XX_finslib_decode_address( const char *str, struct fins_address_tp *address
 	ptr          = str;
 	main_address = 0;
 	sub_address  = 0;
+	name_resolved = false;
 
 	while ( isspace( *ptr ) ) ptr++;
 
-	while ( isalpha( *ptr )  &&  num_char < 3 ) {
-
-		name[num_char] = (char) toupper( *ptr );
-		num_char++;
-		ptr++;
+	// FIXME: Addresses of type E0_ won't work with this logic. Let's change it.
+	for(size_t i=0; i < strlen(ptr); ++i) {
+		if(ptr[i] == '_') {
+			++i; // +1 for _
+			strncpy(name, ptr, i);
+			ptr += i;
+			name_resolved = true;
+			break;
+		}
 	}
-	if ( isalpha( *ptr ) ) return true;
 	
-	while ( num_char < 4 ) name[num_char++] = 0;
+	if(!name_resolved) {
+		while ( isalpha( *ptr )  &&  num_char < 3 ) {
+			name[num_char] = (char) toupper( *ptr );
+			num_char++;
+			ptr++;
+		}
+		if ( isalpha( *ptr ) ) return true;
 
-	while ( isspace( *ptr ) ) ptr++;
-	if ( ! isdigit( *ptr ) ) return true;
+		while ( num_char < 4 ) name[num_char++] = 0;
+
+		while ( isspace( *ptr ) ) ptr++;
+		if ( ! isdigit( *ptr ) ) return true;
+	}
 
 	while ( isdigit( *ptr ) ) {
 
